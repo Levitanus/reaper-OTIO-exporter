@@ -122,3 +122,25 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+cachefiles/
+
+test.otio
+
+test_backup0.kdenlive
+
+test_backup1.kdenlive
+
+test_backup2.kdenlive
+
+test_backup3.kdenlive
+
+test_backup4.kdenlive
+
+test_backup5.kdenlive
+
+test_backup6.kdenlive
+
+test.kdenlive
+
+test.mlt
