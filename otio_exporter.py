@@ -72,8 +72,8 @@ def export_time_selection():
             last_end = item.end
         tl.tracks.append(tr)
     otio.adapters.write_to_file(tl, "test.otio")
-    otio.adapters.write_to_file(tl, "test.mlt")
-    otio.adapters.write_to_file(tl, "test.kdenlive")
+    # otio.adapters.write_to_file(tl, "test.mlt")
+    # otio.adapters.write_to_file(tl, "test.kdenlive")
 
 
 def get_clip_time_range(file: Path) -> otio.opentime.TimeRange:
@@ -91,7 +91,10 @@ def get_clip_time_range(file: Path) -> otio.opentime.TimeRange:
         length = float(video_stream["duration"])
     except KeyError:
         # if no duration in stream, try to get it from format
-        length = float(probe["format"]["duration"])
+        try:
+            length = float(probe["format"]["duration"])
+        except KeyError as e:
+            raise Exception(f"file can't be inspected: {file};\n {e}")
     return otio.opentime.TimeRange(
         start_time=seconds_to_frames(0),
         duration=seconds_to_frames(length),
