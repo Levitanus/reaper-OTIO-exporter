@@ -57,7 +57,9 @@ def export_time_selection():
                 name=f"{item.filename.name} - {i+1}",
                 media_reference=otio.schema.ExternalReference(
                     target_url=str(item.filename.absolute()),
-                    available_range=get_clip_time_range(item.filename),
+                    available_range=get_clip_time_range(
+                        item.filename, fallback_length=item.length
+                    ),
                 ),
                 source_range=otio.opentime.TimeRange(
                     start_time=seconds_to_frames(item.start_offset),
@@ -76,25 +78,44 @@ def export_time_selection():
     # otio.adapters.write_to_file(tl, "test.kdenlive")
 
 
-def get_clip_time_range(file: Path) -> otio.opentime.TimeRange:
+def get_clip_time_range(
+    file: Path, fallback_length: float | None = None
+) -> otio.opentime.TimeRange:
     try:
         probe = ffmpeg.probe(file.absolute())
     except Exception as e:
         print(f"ffprobe error on file: {file.absolute()}")
         raise e
     video_stream = next(
-        (stream for stream in probe["streams"] if stream["codec_type"] == "video"), None
+        (
+            stream
+            for stream in probe.get("streams", [])
+            if stream.get("codec_type") == "video"
+        ),
+        None,
     )
-    if video_stream is None:
+    if video_stream is None and probe.get("streams"):
         video_stream = probe["streams"][0]
-    try:
-        length = float(video_stream["duration"])
-    except KeyError:
+
+    length = None
+    if video_stream is not None:
+        stream_duration = video_stream.get("duration")
+        if stream_duration is not None:
+            length = float(stream_duration)
+
+    if length is None:
         # if no duration in stream, try to get it from format
-        try:
-            length = float(probe["format"]["duration"])
-        except KeyError as e:
-            raise Exception(f"file can't be inspected: {file};\n {e}")
+        format_duration = probe.get("format", {}).get("duration")
+        if format_duration is not None:
+            length = float(format_duration)
+
+    # Still images often have no duration in ffprobe metadata.
+    if length is None and fallback_length is not None:
+        length = float(fallback_length)
+
+    if length is None:
+        raise Exception(f"file can't be inspected: {file}; no duration metadata")
+
     return otio.opentime.TimeRange(
         start_time=seconds_to_frames(0),
         duration=seconds_to_frames(length),
